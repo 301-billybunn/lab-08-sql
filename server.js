@@ -36,8 +36,8 @@ app.get('/location', (request, response) => {
 });
 
 // Do not comment in until you have locations in the DB
-// // Weather data route
-// app.get('/weather', getWeather);
+// Weather data route
+app.get('/weather', getWeather);
 
 // Do not comment in until weather is working
 // // Meetups data route
@@ -62,10 +62,10 @@ function Location(query, res) {
 }
 
 // // Constructor needed for getWeather()
-// function Weather(day) {
-//   this.forecast = day.summary;
-//   this.time = new Date(day.time * 1000).toString().slice(0, 15);
-// }
+function Weather(day) {
+  this.forecast = day.summary;
+  this.time = new Date(day.time * 1000).toString().slice(0, 15);
+}
 
 // // Constructor needed for getMeetups()
 // function Meetups(response) {
@@ -140,10 +140,53 @@ function getLocation(query) {
     });
 }
 
-// // Weather route handler
+// Weather route handler
+
+function getWeather(request, response) {
+  // CREATE the query string to check for the existence of the location
+  const SQL = `SELECT * FROM weathers WHERE location_id=$1;`;
+  const values = [request.query.data.id];
+
+  // Make the query of the database
+  return client.query(SQL, values)
+    .then(result => {
+      // Check to see if the location was found and return the results
+      if (result.rowCount > 0) {
+        console.log('from SQL');
+        response.send(result.rows[0]);
+        // Otherwise get the location information from Dark Sky
+      } else {
+        const url = `https://api.darksky.net/forecast/${process.env.WEATHER_API_KEY}/${request.query.data.latitude},${request.query.data.longitude}`;
+
+        superagent.get(url)
+          .then(result => {
+            const weatherSummaries = result.body.daily.data.map(day => {
+              return new Weather(day)
+            });
+            let newSQL = `INSERT INTO weathers(forecast, time, location_id) VALUES ($1, $2, $3);`;
+            console.log('148', weatherSummaries) // array of objects
+            weatherSummaries.forEach(summary => {
+              let newValues = Object.values(summary);
+              newValues.push(request.query.data.id);
+              // Add the record to the database
+              return client.query(newSQL, newValues)
+                .then(result => {
+                  console.log('155', result.rows);
+                  // Attach the id of the newly created record to the instance of location.
+                  // This will be used to connect the location to the other databases.
+                  console.log('158', result.rows[0].id)
+                })
+                .catch(error => handleError(error, response));
+            })
+            response.send(weatherSummaries);
+          })
+          .catch(error => handleError(error, response));
+      }
+    })
+}
 
 // function getWeather(request, response) {
-//   const url = `https://api.darksky.net/forecast/${process.env.WEATHER_API_KEY}/${request.query.data.latitude},${request.query.data.longitude}`;
+  // const url = `https://api.darksky.net/forecast/${process.env.WEATHER_API_KEY}/${request.query.data.latitude},${request.query.data.longitude}`;
 
 //   superagent.get(url)
 //     .then(result => {
