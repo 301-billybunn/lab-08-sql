@@ -40,8 +40,8 @@ app.get('/location', (request, response) => {
 app.get('/weather', getWeather);
 
 // Do not comment in until weather is working
-// // Meetups data route
-// app.get('/meetups', getMeetups);
+// Meetups data route
+app.get('/meetups', getMeetups);
 
 // Catch-all route
 app.use('*', handleError);
@@ -67,13 +67,13 @@ function Weather(day) {
   this.time = new Date(day.time * 1000).toString().slice(0, 15);
 }
 
-// // Constructor needed for getMeetups()
-// function Meetups(response) {
-//   this.link = response.link;
-//   this.name = response.name;
-//   this.creation_date = new Date(response.created).toString().slice(0, 15)
-//   this.host = response.group.name;
-// }
+// Constructor needed for getMeetups()
+function Meetups(response) {
+  this.link = response.link;
+  this.name = response.name;
+  this.creation_date = new Date(response.created).toString().slice(0, 15)
+  this.host = response.group.name;
+}
 
 // **************************************************
 // Helper functions
@@ -82,7 +82,7 @@ function Weather(day) {
 // Error handler
 
 function handleError(error, response) {
-  console.error(error);
+  // console.error(error);
   if (response) response.status(500).send('Sorry, something went wrong');
 }
 
@@ -98,7 +98,7 @@ function getLocation(query) {
     .then(result => {
       // Check to see if the location was found and return the results
       if (result.rowCount > 0) {
-        console.log('From SQL');
+        // console.log('From SQL');
         return result.rows[0];
 
         // Otherwise get the location information from the Google API
@@ -107,28 +107,28 @@ function getLocation(query) {
 
         return superagent.get(url)
           .then(data => {
-            console.log('FROM API line 90');
+            // console.log('FROM API line 90');
             // Throw an error if there is a problem with the API request
             if (!data.body.results.length) { throw 'no Data' }
 
             // Otherwise create an instance of Location
             else {
               let location = new Location(query, data.body.results[0]);
-              console.log('98', location);
+              // console.log('98', location);
 
               // Create a query string to INSERT a new record with the location data
               let newSQL = `INSERT INTO locations (search_query, formatted_query, latitude, longitude) VALUES ($1, $2, $3, $4) RETURNING id;`;
-              console.log('102', newSQL)
+              // console.log('102', newSQL)
               let newValues = Object.values(location);
-              console.log('104', newValues)
+              // console.log('104', newValues)
 
               // Add the record to the database
               return client.query(newSQL, newValues)
                 .then(result => {
-                  console.log('108', result.rows);
+                  // console.log('108', result.rows);
                   // Attach the id of the newly created record to the instance of location.
                   // This will be used to connect the location to the other databases.
-                  console.log('114', result.rows[0].id)
+                  // console.log('114', result.rows[0].id)
                   location.id = result.rows[0].id;
                   return location;
                 })
@@ -152,8 +152,8 @@ function getWeather(request, response) {
     .then(result => {
       // Check to see if the location was found and return the results
       if (result.rowCount > 0) {
-        console.log('from SQL');
-        response.send(result.rows[0]);
+        // console.log('from SQL');
+        response.send(result.rows);
         // Otherwise get the location information from Dark Sky
       } else {
         const url = `https://api.darksky.net/forecast/${process.env.WEATHER_API_KEY}/${request.query.data.latitude},${request.query.data.longitude}`;
@@ -164,17 +164,17 @@ function getWeather(request, response) {
               return new Weather(day)
             });
             let newSQL = `INSERT INTO weathers(forecast, time, location_id) VALUES ($1, $2, $3);`;
-            console.log('148', weatherSummaries) // array of objects
+            // console.log('167', weatherSummaries) // array of objects
             weatherSummaries.forEach(summary => {
               let newValues = Object.values(summary);
               newValues.push(request.query.data.id);
               // Add the record to the database
               return client.query(newSQL, newValues)
                 .then(result => {
-                  console.log('155', result.rows);
+                  // console.log('174', result.rows);
                   // Attach the id of the newly created record to the instance of location.
                   // This will be used to connect the location to the other databases.
-                  console.log('158', result.rows[0].id)
+                  // console.log('177', result.rows[0].id)
                 })
                 .catch(error => handleError(error, response));
             })
@@ -185,30 +185,51 @@ function getWeather(request, response) {
     })
 }
 
-// function getWeather(request, response) {
-  // const url = `https://api.darksky.net/forecast/${process.env.WEATHER_API_KEY}/${request.query.data.latitude},${request.query.data.longitude}`;
+// Meetups route handler
 
-//   superagent.get(url)
-//     .then(result => {
-//       const weatherSummaries = result.body.daily.data.map(day => {
-//         return new Weather(day)
-//       });
-//       response.send(weatherSummaries);
-//     })
-//     .catch(error => handleError(error, response));
-// }
+function getMeetups(request, response) {
+  console.log('ran getMeetups 191');
+  // CREATE the query string to check for the existence of the location
+  const SQL = `SELECT * FROM meetups WHERE location_id=$1;`;
+  const values = [request.query.data.id];
 
-// // Meetups route handler
+  // Make the query of the database
+  return client.query(SQL, values)
+    .then(result => {
+      // Check to see if the location was found and return the results
+      if (result.rowCount > 0) {
+        console.log('from SQL');
+        response.send(result.rows);
+        // Otherwise get the location information from Meetups
+      } else {
+        console.log('201 - get the location information from Meetups')
+        const url = `https://api.meetup.com/find/upcoming_events?&sign=true&photo-host=public&lon=${request.query.data.longitude}&page=20&lat=${request.query.data.latitude}&key=${process.env.MEETUPS_API_KEY}`;
+        console.log('206 meetups url:', url);
 
-// function getMeetups(request, response) {
-//   const url = `https://api.meetup.com/find/upcoming_events?&sign=true&photo-host=public&lon=${request.query.data.longitude}&page=20&lat=${request.query.data.latitude}&key=${process.env.MEETUPS_API_KEY}`;
+        superagent.get(url)
+          .then(result => {
+            const meetups = result.body.events.map(meetup => {
+              return new Meetups(meetup)
+            });
+            let newSQL = `INSERT INTO meetups(link, name, creation_date, host, location_id) VALUES ($1, $2, $3, $4, $5);`;
+            console.log('213 Meetups array:', meetups) // array of objects
+            meetups.forEach(meetup => {
+              let newValues = Object.values(meetup);
+              newValues.push(request.query.data.id);
+              // Add the record to the database
+              return client.query(newSQL, newValues)
+                .then(result => {
+                  // console.log('220', result.rows);
+                  // Attach the id of the newly created record to the instance of location.
+                  // This will be used to connect the location to the other databases.
+                  // console.log('223', result.rows[0].id)
+                })
+                .catch(error => handleError(error, response));
+            })
+            response.send(meetups);
+          })
+          .catch(error => handleError(error, response));
+      }
+    })
+}
 
-//   superagent.get(url)
-//     .then(result => {
-//       const meetups = result.body.events.map(meetup => {
-//         return new Meetups(meetup)
-//       });
-//       response.send(meetups);
-//     })
-//     .catch(error => handleError(error, response));
-// }
