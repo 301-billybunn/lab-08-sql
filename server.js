@@ -47,6 +47,9 @@ app.get('/yelp', getYelps);
 // Movie DB data route
 app.get('/movies', getMovies);
 
+// Trails data route
+app.get('/trails', getTrails);
+
 // Catch-all route
 app.use('*', handleError);
 
@@ -101,16 +104,16 @@ function Movie(response) {
 
 // Constructor needed for getTrails()
 function Trail(response) {
-  this.trail_url = data.url;
-  this.name = data.name;
-  this.location = data.location;
-  this.length = data.length;
-  this.condition_date = new Date(data.conditionDate);
-  this.condition_time = new Date(data.conditionDate);
-  this.conditions = data.conditionDetails;
-  this.stars = data.stars;
-  this.star_votes = data.starVotes;
-  this.summary = data.summary;
+  this.trail_url = response.url;
+  this.name = response.name;
+  this.location = response.location;
+  this.length = response.length;
+  this.condition_date = new Date(response.conditionDate);
+  this.condition_time = new Date(response.conditionDate);
+  this.conditions = response.conditionDetails;
+  this.stars = response.stars;
+  this.star_votes = response.starVotes;
+  this.summary = response.summary;
 }
 
 // **************************************************
@@ -350,6 +353,47 @@ function getMovies(request, response) {
                 .catch(error => handleError(error, response));
             })
             response.send(movies);
+          })
+          .catch(error => handleError(error, response));
+      }
+    })
+}
+
+function getTrails(request, response) {
+  // CREATE the query string to check for the existence of the location
+  const SQL = `SELECT * FROM trails WHERE location_id=$1;`;
+  const values = [request.query.data.id];
+
+  // Make the query of the database
+  return client.query(SQL, values)
+    .then(result => {
+      // Check to see if the location was found and return the results
+      if (result.rowCount > 0) {
+        console.log('372: found in DB')
+        response.send(result.rows);
+        // Otherwise get the location information from Hiking Project
+      } else {
+        console.log('376', request.query.data);
+        const url = `https://www.hikingproject.com/data/get-trails?lat=${request.query.data.latitude}&lon=${request.query.data.longitude}&maxDistance=10&key=${process.env.TRAILS_API_KEY}`;
+        console.log('319', url);
+        superagent.get(url)
+          .then(result => {
+            console.log('323 trails result: ', result.body);
+            const trails = result.body.trails.map(trail => {
+              return new Trail(trail)
+            });
+            let newSQL = `INSERT INTO trails(trail_url, name, location, length, condition_date, condition_time, conditions, stars, star_votes, summary, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);`;
+            trails.forEach(trail => {
+              let newValues = Object.values(trail);
+              newValues.push(request.query.data.id);
+              // Add the record to the database
+              return client.query(newSQL, newValues)
+                .then(result => {
+                  // This will be used to connect the location to the other databases.
+                })
+                .catch(error => handleError(error, response));
+            })
+            response.send(trails);
           })
           .catch(error => handleError(error, response));
       }
