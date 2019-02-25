@@ -317,7 +317,7 @@ function getMovies(request, response) {
       } else {
         // console.log('318', request.query.data);
         const url = `https://api.themoviedb.org/3/search/movie?api_key=${process.env.MOVIE_API_KEY}&language=en-US&page=1&include_adult=false&query=${request.query.data.search_query}`;
-        console.log('319', url);
+        // console.log('319', url);
         superagent.get(url)
           .then(result => {
             // console.log('323 movie result: ', result.body);
