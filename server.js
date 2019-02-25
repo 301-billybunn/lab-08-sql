@@ -247,24 +247,24 @@ function getYelps(request, response) {
   // console.log(request.query.data.id);
 
   const values = [request.query.data.id];
-  console.log('values:',values);
+  // console.log('values:',values);
 
   // Make a query of the database
   return client.query(SQL, values)
     .then(result => {
       // Check to see if the location was found and return the results
       if (result.rowCount > 0) {
-        console.log('257: found yelps in DB');
+        // console.log('257: found yelps in DB');
         response.send(result.rows);
         // Otherwise get the location information from Yelp
       } else {
-        console.log('261: didnt find yelps in DB');
+        // console.log('261: didnt find yelps in DB');
         const url = `https://api.yelp.com/v3/businesses/search?latitude=${request.query.data.latitude}&longitude=${request.query.data.longitude}`;
         // console.log('Yelp url:', url);
         superagent.get(url)
           .set({'Authorization': `Bearer ${process.env.YELP_API_KEY}`})
           .then(result => {
-            console.log('267 Yelp result: ', result.body);
+            // console.log('267 Yelp result: ', result.body);
             const yelps = result.body.businesses.map(yelp => {
               return new Yelps(yelp);
             });
@@ -286,3 +286,41 @@ function getYelps(request, response) {
     })
 }
 
+// MovieDB route handler
+
+function getMovies(request, response) {
+  // CREATE the query string to check for the existence of the location
+  const SQL = `SELECT * FROM movies WHERE location_id=$1;`;
+  const values = [request.query.data.id];
+
+  // Make the query of the database
+  return client.query(SQL, values)
+    .then(result => {
+      // Check to see if the location was found and return the results
+      if (result.rowCount > 0) {
+        response.send(result.rows);
+        // Otherwise get the location information from MovieDB
+      } else {
+        const url = ``;
+        superagent.get(url)
+          .then(result => {
+            const movies = result.body.events.map(movie => {
+              return new Movie(movie)
+            });
+            let newSQL = `INSERT INTO movies(link, name, creation_date, host, location_id) VALUES ($1, $2, $3, $4, $5);`;
+            movies.forEach(movie => {
+              let newValues = Object.values(movie);
+              newValues.push(request.query.data.id);
+              // Add the record to the database
+              return client.query(newSQL, newValues)
+                .then(result => {
+                  // This will be used to connect the location to the other databases.
+                })
+                .catch(error => handleError(error, response));
+            })
+            response.send(movies);
+          })
+          .catch(error => handleError(error, response));
+      }
+    })
+}

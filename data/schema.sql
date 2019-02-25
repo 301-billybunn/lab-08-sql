@@ -36,3 +36,16 @@ CREATE TABLE IF NOT EXISTS yelps (
   location_id INTEGER NOT NULL,
   FOREIGN KEY (location_id) REFERENCES locations (id)
 );
+
+CREATE TABLE IF NOT EXISTS movies (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(255),
+  released_on VARCHAR(255),
+  total_votes VARCHAR(255),
+  average_votes VARCHAR(255),
+  popularity VARCHAR(255),
+  image_url VARCHAR(255),
+  overview VARCHAR(255),
+  location_id INTEGER NOT NULL,
+  FOREIGN KEY (location_id) REFERENCES locations (id)
+);
