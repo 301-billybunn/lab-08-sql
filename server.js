@@ -35,13 +35,14 @@ app.get('/location', (request, response) => {
     .catch(error => handleError(error, response));
 });
 
-// Do not comment in until you have locations in the DB
 // Weather data route
 app.get('/weather', getWeather);
 
-// Do not comment in until weather is working
 // Meetups data route
 app.get('/meetups', getMeetups);
+
+// Yelp data route
+app.get('/yelp', getYelps);
 
 // Catch-all route
 app.use('*', handleError);
