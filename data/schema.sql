@@ -25,3 +25,16 @@ CREATE TABLE IF NOT EXISTS meetups (
   location_id INTEGER NOT NULL,
   FOREIGN KEY (location_id) REFERENCES locations (id)
 );
+
+CREATE TABLE IF NOT EXISTS yelps (
+  id SERIAL PRIMARY KEY,
+  url VARCHAR(255),
+  name VARCHAR(255),
+  rating VARCHAR(255),
+  price VARCHAR(255),
+  image_url VARCHAR(255),
+  overview VARCHAR(255),
+  creation_date CHAR(15),
+  location_id INTEGER NOT NULL,
+  FOREIGN KEY (location_id) REFERENCES locations (id)
+);
