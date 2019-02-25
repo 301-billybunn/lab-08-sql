@@ -99,6 +99,20 @@ function Movie(response) {
   this.overview = response.overview;
 }
 
+// Constructor needed for getTrails()
+function Trail(response) {
+  this.trail_url = data.url;
+  this.name = data.name;
+  this.location = data.location;
+  this.length = data.length;
+  this.condition_date = new Date(data.conditionDate);
+  this.condition_time = new Date(data.conditionDate);
+  this.conditions = data.conditionDetails;
+  this.stars = data.stars;
+  this.star_votes = data.starVotes;
+  this.summary = data.summary;
+}
+
 // **************************************************
 // Helper functions
 // **************************************************
